@@ -6,20 +6,14 @@
 #   HUBOT_LIST_DECORATOR - a character indicating how to decorate usernames.
 #     Valid settings are '<', '(', '[', and '{'. This variable can also be left
 #     unset. This setting defaults to ''.
-#   HUBOT_LIST_PREPEND - set to 'false' to disable prepending the original
-#     message to the response. This variable can also be left unset. This
-#     setting defaults to 'true'.
 #   HUBOT_LIST_PREPEND_USERNAME - set to 'false' to disable prepending the
 #     original username to the prepended message. This variable can also be
 #     left unset. This setting defaults to 'true'.
-#   HUBOT_LIST_TRUNCATE - number of characters from the original message to
-#     display when HUBOT_LIST_PREPEND is set. Set to a value less than or
-#     equal to zero to disable truncating. This setting defaults to '50'.
 #   HUBOT_LIST_RECURSE - set to 'false' to disable recursive list expansion.
 #     The setting defaults to 'true'.
 #
 # Commands:
-#   hubot list list - list all list names
+#   hubot list lists - list all list names
 #   hubot list dump - list all list names and members
 #   hubot list create <list> - create a new list
 #   hubot list destroy <list> - destroy a list
@@ -30,9 +24,11 @@
 #   hubot list membership <name> - list lists that name is in
 #
 # Author:
-#   anishathalye
+#   Josh King <jking@chambana.net>, based on hubot-group by anishathalye
 
 IDENTIFIER = "[-._a-zA-Z0-9]+"
+LIST_ADMINS = process.env.HUBOT_LIST_ADMINS
+LIST_DECORATODECORATO process.env.HUBOT_LIST_ADMINS
 
 sorted = (arr) ->
   copy = (i for i in arr)
@@ -114,6 +110,26 @@ module.exports = (robot) ->
   config = require('hubot-conf')('list', robot)
   list = new List robot
 
+  robot.listenerMiddleware (context, next, done) ->
+    if context.listener.options.id == 'list.send'
+      if context.response.message.user.id in LIST_ADMINS
+        # User is allowed access to this command
+        next()
+      else
+        # Fail silently
+        done()
+    else if context.listener.options.id.match ///^list\.[a-zA-Z0-9]+$///i
+      if context.response.message.user.id in LIST_ADMINS
+        # User is allowed access to this command
+        next()
+      else
+        # Restricted command, but user isn't in whitelist
+        context.response.reply "I'm sorry, @#{context.response.message.user.name}, but you don't have access to do that."
+        done()
+    else
+      # This is not a restricted command; allow everyone
+      next()
+
   decorate = (name) ->
     switch config('decorator', '')
       when "<" then "<@#{name}>"
@@ -122,7 +138,7 @@ module.exports = (robot) ->
       when "{" then "{@#{name}}"
       else "@#{name}"
 
-  robot.hear ///@#{IDENTIFIER}///, (res) ->
+  robot.hear ///@#{IDENTIFIER}///, id:'list.send', (res) ->
     response = []
     tagged = []
     for g in list.lists()
@@ -147,39 +163,35 @@ module.exports = (robot) ->
       else
         decorated[name] = true
         decorate name
+    text = res.message.text
+    if config('prepend.username', 'true') == 'true'
+      text = "#{res.message.user.name}: #{message}"
     for g in tagged
       mem = list.members g
       if mem.length > 0
-        response.push "*@#{g}*: #{(decorateOnce name for name in mem).join ", "}"
-    if response.length > 0
-      if config('prepend', 'true') == 'true'
-        truncate = parseInt config('truncate', '50')
-        text = res.message.text
-        message = if truncate > 0 and text.length > truncate \
-          then text.substring(0, truncate) + " [...]" else text
-        if config('prepend.username', 'true') == 'true'
-          message = "#{res.message.user.name}: #{message}"
-        response.unshift message
-      res.send response.join "\n"
+        if robot.adapter.constructor.name in ["SlackBot", "Room", "Signal"]
+          for m in mem
+            room = robot.adapter.client.rtm.dataStore.getDMByName(m)
+            res.send({room: room.id}, text)
 
-  robot.respond ///list\s+list///, (res) ->
+  robot.respond ///list\s+lists///, id:'list.lists', (res) ->
     res.send "Lists: #{list.lists().join ", "}"
 
-  robot.respond ///list\s+dump///, (res) ->
+  robot.respond ///list\s+dump///, id:'list.dump', (res) ->
     response = []
     for g in list.lists()
       response.push "*@#{g}*: #{list.members(g).join ", "}"
     if response.length > 0
       res.send response.join "\n"
 
-  robot.respond ///list\s+create\s+(#{IDENTIFIER})///, (res) ->
+  robot.respond ///list\s+create\s+(#{IDENTIFIER})///, id:'list.create', (res) ->
     name = res.match[1]
     if list.create name
       res.send "Created list #{name}."
     else
       res.send "List #{name} already exists!"
 
-  robot.respond ///list\s+destroy\s+(#{IDENTIFIER})///, (res) ->
+  robot.respond ///list\s+destroy\s+(#{IDENTIFIER})///, id:'list.destroy', (res) ->
     name = res.match[1]
     old = list.destroy name
     if old isnt null
@@ -187,7 +199,7 @@ module.exports = (robot) ->
     else
       res.send "List #{name} does not exist!"
 
-  robot.respond ///list\s+rename\s+(#{IDENTIFIER})\s+(#{IDENTIFIER})///, (res) ->
+  robot.respond ///list\s+rename\s+(#{IDENTIFIER})\s+(#{IDENTIFIER})///, id:'list.rename', (res) ->
     from = res.match[1]
     to = res.match[2]
     if list.rename from, to
@@ -195,7 +207,7 @@ module.exports = (robot) ->
     else
       res.send "Either list #{from} does not exist or #{to} already exists!"
 
-  robot.respond ///list\s+add\s+(#{IDENTIFIER})\s+(&?#{IDENTIFIER}(?:\s+&?#{IDENTIFIER})*)///, (res) ->
+  robot.respond ///list\s+add\s+(#{IDENTIFIER})\s+(&?#{IDENTIFIER}(?:\s+&?#{IDENTIFIER})*)///, id:'list.add', (res) ->
     g = res.match[1]
     names = res.match[2]
     names = names.split /\s+/
@@ -210,7 +222,7 @@ module.exports = (robot) ->
         response.push "#{name} is already in list #{g}!"
     res.send response.join "\n"
 
-  robot.respond ///list\s+remove\s+(#{IDENTIFIER})\s+(&?#{IDENTIFIER}(?:\s+&?#{IDENTIFIER})*)///, (res) ->
+  robot.respond ///list\s+remove\s+(#{IDENTIFIER})\s+(&?#{IDENTIFIER}(?:\s+&?#{IDENTIFIER})*)///, id:'list.remove', (res) ->
     g = res.match[1]
     names = res.match[2]
     names = names.split /\s+/
@@ -225,14 +237,14 @@ module.exports = (robot) ->
         response.push "#{name} is not in list #{g}!"
     res.send response.join "\n"
 
-  robot.respond ///list\s+info\s+(#{IDENTIFIER})///, (res) ->
+  robot.respond ///list\s+info\s+(#{IDENTIFIER})///, id:'list.info', (res) ->
     name = res.match[1]
     if not list.exists name
       res.send "List #{name} does not exist!"
       return
     res.send "*@#{name}*: #{(list.members name).join ", "}"
 
-  robot.respond ///list\s+membership\s+(&?#{IDENTIFIER})///, (res) ->
+  robot.respond ///list\s+membership\s+(&?#{IDENTIFIER})///, id:'list.membership', (res) ->
     name = res.match[1]
     lists = list.membership name
     if lists.length > 0
