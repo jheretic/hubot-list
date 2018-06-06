@@ -3,6 +3,12 @@
 module.exports = function (grunt) {
 
   grunt.initConfig({
+    env: {
+      test: {
+        NODE_ENV: 'test',
+        HUBOT_LIST_ADMINS: 'alice'
+      }
+    },
     mochaTest: {
       test: {
         options: {
@@ -27,7 +33,7 @@ module.exports = function (grunt) {
   // load all grunt tasks
   require('matchdep').filterDev(['grunt-*', '!grunt-cli']).forEach(grunt.loadNpmTasks);
 
-  grunt.registerTask('test', ['mochaTest']);
+  grunt.registerTask('test', ['env:test', 'mochaTest']);
   grunt.registerTask('test:watch', ['watch']);
   grunt.registerTask('default', ['test']);
 };

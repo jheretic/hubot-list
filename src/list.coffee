@@ -27,10 +27,10 @@
 #   Josh King <jking@chambana.net>, based on hubot-group by anishathalye
 
 IDENTIFIER = "[-._a-zA-Z0-9]+"
-LIST_ADMINS = process.env.HUBOT_LIST_ADMINS
-LIST_DECORATOR = process.env.HUBOT_LIST_DECORATOR
-LIST_PREPEND_USERNAME = process.env.HUBOT_LIST_PREPEND_USERNAME
-LIST_RECURSE = process.env.HUBOT_LIST_RECURSE
+LIST_ADMINS = process.env.HUBOT_LIST_ADMINS.split(',') or ''
+LIST_DECORATOR = process.env.HUBOT_LIST_DECORATOR or ''
+LIST_PREPEND_USERNAME = process.env.HUBOT_LIST_PREPEND_USERNAME or false
+LIST_RECURSE = process.env.HUBOT_LIST_RECURSE or false
 
 sorted = (arr) ->
   copy = (i for i in arr)
