@@ -28,7 +28,9 @@
 
 IDENTIFIER = "[-._a-zA-Z0-9]+"
 LIST_ADMINS = process.env.HUBOT_LIST_ADMINS
-LIST_DECORATODECORATO process.env.HUBOT_LIST_ADMINS
+LIST_DECORATOR = process.env.HUBOT_LIST_DECORATOR
+LIST_PREPEND_USERNAME = process.env.HUBOT_LIST_PREPEND_USERNAME
+LIST_RECURSE = process.env.HUBOT_LIST_RECURSE
 
 sorted = (arr) ->
   copy = (i for i in arr)
@@ -107,7 +109,6 @@ class List
     return lists
 
 module.exports = (robot) ->
-  config = require('hubot-conf')('list', robot)
   list = new List robot
 
   robot.listenerMiddleware (context, next, done) ->
@@ -131,7 +132,7 @@ module.exports = (robot) ->
       next()
 
   decorate = (name) ->
-    switch config('decorator', '')
+    switch LIST_DECORATOR
       when "<" then "<@#{name}>"
       when "(" then "(@#{name})"
       when "[" then "[@#{name}]"
@@ -144,7 +145,7 @@ module.exports = (robot) ->
     for g in list.lists()
       if ///(^|\s)@#{g}\b///.test res.message.text
         tagged.push g
-    if config('recurse') != 'false'
+    if LIST_RECURSE != 'false'
       process = (i for i in tagged)
       while process.length > 0
         g = process.shift()
@@ -164,7 +165,7 @@ module.exports = (robot) ->
         decorated[name] = true
         decorate name
     text = res.message.text
-    if config('prepend.username', 'true') == 'true'
+    if LIST_PREPEND_USERNAME == 'true'
       text = "#{res.message.user.name}: #{message}"
     for g in tagged
       mem = list.members g
