@@ -1,39 +1,50 @@
 {
-  "name": "hubot-list",
+  "name": "@throneless/hubot-list",
   "description": "A Hubot script for creating lists of users and sending them private messages.",
-  "version": "0.0.0",
-  "author": "Josh King <jking@chambana.net>",
-  "license": "MIT",
+  "version": "0.1.0",
+  "author": "Josh King <josh@throneless.tech>",
+  "license": "AGPL-3.0",
   "keywords": "hubot, hubot-scripts",
+  "main": "src/list.js",
+  "scripts": {
+    "test": "mocha",
+    "lint": "npx eslint ./src/*.js"
+  },
   "repository": {
     "type": "git",
-    "url": "git://github.com/hubot-scripts/hubot-list.git"
+    "url": "git+https://github.com/throneless-tech/hubot-list.git"
   },
   "bugs": {
-    "url": "https://github.com/hubot-scripts/hubot-list/issues"
+    "url": "https://github.com/throneless-tech/hubot-list/issues"
+  },
+  "homepage": "https://github.com/throneless-tech/hubot-list#readme",
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "git add"
+    ]
   },
   "dependencies": {},
   "peerDependencies": {
-    "hubot": "2.x"
+    "hubot": "^3.1.1"
   },
   "devDependencies": {
-    "chai": "^2.3.0",
-    "coffee-script": "1.6.3",
-    "grunt": "^0.4.5",
-    "grunt-cli": "^0.1.13",
-    "grunt-contrib-watch": "~0.6.1",
-    "grunt-env": "^0.4.4",
-    "grunt-mocha-test": "~0.12.7",
-    "grunt-release": "~0.11.0",
-    "hubot": "2.x",
+    "chai": "^4.2.0",
+    "co": "^4.6.0",
+    "eslint": "^5.6.1",
+    "eslint-config-prettier": "^3.1.0",
+    "eslint-plugin-prettier": "^3.0.0",
+    "hubot": "^3.1.1",
     "hubot-test-helper": "^1.9.0",
-    "matchdep": "~0.3.0",
-    "mocha": "^2.5.3",
-    "sinon": "^1.13.0",
-    "sinon-chai": "^2.7.0"
-  },
-  "main": "index.coffee",
-  "scripts": {
-    "test": "grunt test"
+    "husky": "^1.1.2",
+    "lint-staged": "^7.3.0",
+    "mocha": "^5.2.0",
+    "prettier": "^1.14.3",
+    "prettier-eslint-cli": "^4.7.1"
   }
 }
