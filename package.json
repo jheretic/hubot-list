@@ -3,7 +3,7 @@
   "description": "A Hubot script for creating lists of users and sending them private messages.",
   "version": "0.1.0",
   "author": "Josh King <josh@throneless.tech>",
-  "license": "AGPL-3.0",
+  "license": "AGPL-3.0-or-later",
   "keywords": "hubot, hubot-scripts",
   "main": "src/list.js",
   "scripts": {
