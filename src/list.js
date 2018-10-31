@@ -162,6 +162,7 @@ module.exports = function(robot) {
         return done();
       }
     } else if (
+      context.listener.options.id &&
       context.listener.options.id.match(
         new RegExp(`^list\\.[a-zA-Z0-9]+$`, "i")
       )
@@ -246,11 +247,7 @@ module.exports = function(robot) {
       for (g of Array.from(tagged)) {
         mem = list.members(g);
         if (mem.length > 0) {
-          if (
-            ["SlackBot", "Room", "Signal"].includes(
-              robot.adapter.constructor.name
-            )
-          ) {
+          if (["SlackBot", "Room"].includes(robot.adapter.constructor.name)) {
             result.push(
               (() => {
                 const result1 = [];
@@ -259,6 +256,16 @@ module.exports = function(robot) {
                     m
                   );
                   result1.push(res.send({ room: room.id }, text));
+                }
+                return result1;
+              })()
+            );
+          } else if (["Signal"].includes(robot.adapter.constructor.name)) {
+            result.push(
+              (() => {
+                const result1 = [];
+                for (let m of Array.from(mem)) {
+                  result1.push(robot.messageRoom("+" + m, text));
                 }
                 return result1;
               })()
@@ -274,11 +281,13 @@ module.exports = function(robot) {
     })();
   });
 
-  robot.respond(new RegExp(`list\\s+lists`), { id: "list.lists" }, res =>
+  robot.respond(new RegExp(`[L|l]ist\\s+lists`), { id: "list.lists" }, res =>
     res.send(`Lists: ${list.lists().join(", ")}`)
   );
 
-  robot.respond(new RegExp(`list\\s+dump`), { id: "list.dump" }, function(res) {
+  robot.respond(new RegExp(`[L|l]ist\\s+dump`), { id: "list.dump" }, function(
+    res
+  ) {
     const response = [];
     for (let g of Array.from(list.lists())) {
       response.push(`*@${g}*: ${list.members(g).join(", ")}`);
@@ -289,7 +298,7 @@ module.exports = function(robot) {
   });
 
   robot.respond(
-    new RegExp(`list\\s+create\\s+(${IDENTIFIER})`),
+    new RegExp(`[L|l]ist\\s+create\\s+(${IDENTIFIER})`),
     { id: "list.create" },
     function(res) {
       const name = res.match[1];
@@ -302,7 +311,7 @@ module.exports = function(robot) {
   );
 
   robot.respond(
-    new RegExp(`list\\s+destroy\\s+(${IDENTIFIER})`),
+    new RegExp(`[L|l]ist\\s+destroy\\s+(${IDENTIFIER})`),
     { id: "list.destroy" },
     function(res) {
       const name = res.match[1];
@@ -316,7 +325,7 @@ module.exports = function(robot) {
   );
 
   robot.respond(
-    new RegExp(`list\\s+rename\\s+(${IDENTIFIER})\\s+(${IDENTIFIER})`),
+    new RegExp(`[L|l]ist\\s+rename\\s+(${IDENTIFIER})\\s+(${IDENTIFIER})`),
     { id: "list.rename" },
     function(res) {
       const from = res.match[1];
@@ -331,7 +340,7 @@ module.exports = function(robot) {
 
   robot.respond(
     new RegExp(
-      `list\\s+add\\s+(${IDENTIFIER})\\s+(&?${IDENTIFIER}(?:\\s+&?${IDENTIFIER})*)`
+      `[L|l]ist\\s+add\\s+(${IDENTIFIER})\\s+(&?${IDENTIFIER}(?:\\s+&?${IDENTIFIER})*)`
     ),
     { id: "list.add" },
     function(res) {
@@ -356,7 +365,7 @@ module.exports = function(robot) {
 
   robot.respond(
     new RegExp(
-      `list\\s+remove\\s+(${IDENTIFIER})\\s+(&?${IDENTIFIER}(?:\\s+&?${IDENTIFIER})*)`
+      `[L|l]ist\\s+remove\\s+(${IDENTIFIER})\\s+(&?${IDENTIFIER}(?:\\s+&?${IDENTIFIER})*)`
     ),
     { id: "list.remove" },
     function(res) {
@@ -380,7 +389,7 @@ module.exports = function(robot) {
   );
 
   robot.respond(
-    new RegExp(`list\\s+info\\s+(${IDENTIFIER})`),
+    new RegExp(`[L|l]ist\\s+info\\s+(${IDENTIFIER})`),
     { id: "list.info" },
     function(res) {
       const name = res.match[1];
@@ -393,7 +402,7 @@ module.exports = function(robot) {
   );
 
   robot.respond(
-    new RegExp(`list\\s+membership\\s+(&?${IDENTIFIER})`),
+    new RegExp(`[L|l]ist\\s+membership\\s+(&?${IDENTIFIER})`),
     { id: "list.membership" },
     function(res) {
       const name = res.match[1];

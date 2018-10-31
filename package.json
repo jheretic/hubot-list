@@ -1,7 +1,7 @@
 {
   "name": "@throneless/hubot-list",
   "description": "A Hubot script for creating lists of users and sending them private messages.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "Josh King <josh@throneless.tech>",
   "license": "AGPL-3.0-or-later",
   "keywords": "hubot, hubot-scripts",
