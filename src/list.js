@@ -1,35 +1,34 @@
-/**
- * Description:
- *   A script that expands mentions of lists. Lists themselves can be used as
- *   members if prepended with '&', and mentions will be expanded recursively.
- *
- * Dependencies:
- *   None
- *
- * Configuration:
- *   HUBOT_LIST_DECORATOR - a character indicating how to decorate usernames.
- *     Valid settings are '<', '(', '[', and '{'. This variable can also be left
- *     unset. This setting defaults to ''.
- *   HUBOT_LIST_PREPEND_USERNAME - set to 'false' to disable prepending the
- *     original username to the prepended message. This variable can also be
- *     left unset. This setting defaults to 'true'.
- *   HUBOT_LIST_RECURSE - set to 'false' to disable recursive list expansion.
- *     The setting defaults to 'true'.
- *
- * Commands:
- *   hubot list lists - list all list names
- *   hubot list dump - list all list names and members
- *   hubot list create <list> - create a new list
- *   hubot list destroy <list> - destroy a list
- *   hubot list rename <old> <new> - rename a list
- *   hubot list add <list> <name> - add name to a list
- *   hubot list remove <list> <name> - remove name from a list
- *   hubot list info <list> - list members in list
- *   hubot list membership <name> - list lists that name is in
- *
- * Author:
- *   Josh King <jking@chambana.net>, based on hubot-group by anishathalye
- */
+// Description:
+//   A script that expands mentions of lists. Lists themselves can be used as
+//   members if prepended with '&', and mentions will be expanded recursively.
+//
+// Dependencies:
+//   None
+//
+// Configuration:
+//   HUBOT_LIST_DECORATOR - a character indicating how to decorate usernames.
+//     Valid settings are '<', '(', '[', and '{'. This variable can also be left
+//     unset. This setting defaults to ''.
+//   HUBOT_LIST_PREPEND_USERNAME - set to 'false' to disable prepending the
+//     original username to the prepended message. This variable can also be
+//     left unset. This setting defaults to 'true'.
+//   HUBOT_LIST_RECURSE - set to 'false' to disable recursive list expansion.
+//     The setting defaults to 'true'.
+//
+// Commands:
+//   hubot list lists - list all list names
+//   hubot list dump - list all list names and members
+//   hubot list create <list> - create a new list
+//   hubot list destroy <list> - destroy a list
+//   hubot list rename <old> <new> - rename a list
+//   hubot list add <list> <name> - add name to a list
+//   hubot list remove <list> <name> - remove name from a list
+//   hubot list info <list> - list members in list
+//   hubot list membership <name> - list lists that name is in
+//
+// Author:
+//   Josh King <jking@chambana.net>, based on hubot-group by anishathalye
+//
 
 const IDENTIFIER = "[-._a-zA-Z0-9]+";
 const LIST_ADMINS = process.env.HUBOT_LIST_ADMINS.split(",") || "";
@@ -37,122 +36,124 @@ const LIST_DECORATOR = process.env.HUBOT_LIST_DECORATOR || "";
 const LIST_PREPEND_USERNAME = process.env.HUBOT_LIST_PREPEND_USERNAME || false;
 const LIST_RECURSE = process.env.HUBOT_LIST_RECURSE || false;
 
-const sorted = function(arr) {
+function sorted(arr) {
   const copy = Array.from(arr);
   return copy.sort();
-};
-
-class List {
-  constructor(robot) {
-    this.load = this.load.bind(this);
-    this.members = this.members.bind(this);
-    this.lists = this.lists.bind(this);
-    this.exists = this.exists.bind(this);
-    this.create = this.create.bind(this);
-    this.destroy = this.destroy.bind(this);
-    this.rename = this.rename.bind(this);
-    this.add = this.add.bind(this);
-    this.remove = this.remove.bind(this);
-    this.membership = this.membership.bind(this);
-    this.robot = robot;
-    this.cache = {};
-
-    this.robot.brain.on("loaded", this.load);
-    if (this.robot.brain.data.users.length) {
-      this.load();
-    }
-  }
-
-  load() {
-    if (this.robot.brain.data.list) {
-      this.cache = this.robot.brain.data.list;
-    } else {
-      this.robot.brain.data.list = this.cache;
-    }
-  }
-
-  members(list) {
-    return sorted(this.cache[list] || []);
-  }
-
-  lists() {
-    return sorted(Object.keys(this.cache));
-  }
-
-  exists(list) {
-    return this.cache[list] != null;
-  }
-
-  create(list) {
-    if (this.exists(list)) {
-      return false;
-    } else {
-      this.cache[list] = [];
-      return true;
-    }
-  }
-
-  destroy(list) {
-    if (this.exists(list)) {
-      const mem = this.members(list);
-      delete this.cache[list];
-      return mem;
-    } else {
-      return null;
-    }
-  }
-
-  rename(from, to) {
-    if (!this.exists(from) || this.exists(to)) {
-      return false;
-    } else {
-      this.cache[to] = this.cache[from];
-      delete this.cache[from];
-      return true;
-    }
-  }
-
-  add(list, name) {
-    if (!this.exists(list)) {
-      return false;
-    }
-    if (Array.from(this.cache[list]).includes(name)) {
-      return false;
-    } else {
-      this.cache[list].push(name);
-      return true;
-    }
-  }
-
-  remove(list, name) {
-    if (!this.exists(list)) {
-      return false;
-    }
-    if (Array.from(this.cache[list]).includes(name)) {
-      const idx = this.cache[list].indexOf(name);
-      this.cache[list].splice(idx, 1);
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  membership(name) {
-    const lists = [];
-    for (let list of Object.keys(this.cache || {})) {
-      const names = this.cache[list];
-      if (Array.from(names).includes(name)) {
-        lists.push(list);
-      }
-    }
-    return lists;
-  }
 }
 
-module.exports = function(robot) {
-  const list = new List(robot);
+module.exports = robot => {
+  class List {
+    constructor() {
+      robot.brain.on("loaded", this.load);
+      if (robot.brain.data.users.length) {
+        this.load();
+      }
+    }
 
-  robot.listenerMiddleware(function(context, next, done) {
+    load() {
+      if (robot.brain.data.list) {
+        this.cache = robot.brain.data.list;
+      } else {
+        robot.brain.data.list = this.cache;
+      }
+    }
+
+    members(list) {
+      return sorted(this.cache[list] || []);
+    }
+
+    lists() {
+      return sorted(Object.keys(this.cache));
+    }
+
+    exists(list) {
+      return this.cache[list] != null;
+    }
+
+    create(list) {
+      if (this.exists(list)) {
+        return false;
+      } else {
+        this.cache[list] = [];
+        return true;
+      }
+    }
+
+    destroy(list) {
+      if (this.exists(list)) {
+        const mem = this.members(list);
+        delete this.cache[list];
+        return mem;
+      } else {
+        return null;
+      }
+    }
+
+    rename(from, to) {
+      if (!this.exists(from) || this.exists(to)) {
+        return false;
+      } else {
+        this.cache[to] = this.cache[from];
+        delete this.cache[from];
+        return true;
+      }
+    }
+
+    add(list, name) {
+      if (!this.exists(list)) {
+        return false;
+      }
+      if (Array.from(this.cache[list]).includes(name)) {
+        return false;
+      } else {
+        this.cache[list].push(name);
+        return true;
+      }
+    }
+
+    remove(list, name) {
+      if (!this.exists(list)) {
+        return false;
+      }
+      if (Array.from(this.cache[list]).includes(name)) {
+        const idx = this.cache[list].indexOf(name);
+        this.cache[list].splice(idx, 1);
+        return true;
+      } else {
+        return false;
+      }
+    }
+
+    membership(name) {
+      const lists = [];
+      for (let list of Object.keys(this.cache || {})) {
+        const names = this.cache[list];
+        if (Array.from(names).includes(name)) {
+          lists.push(list);
+        }
+      }
+      return lists;
+    }
+
+    ismember(list, name) {
+      if (!this.exists(list)) {
+        return false;
+      }
+      if (Array.from(this.cache[list]).includes(name)) {
+        return true;
+      } else {
+        return false;
+      }
+    }
+
+    isadmin(name) {
+      return Array.from(LIST_ADMINS).includes(name);
+    }
+  }
+
+  robot.list = new List();
+
+  robot.listenerMiddleware((context, next, done) => {
     if (context.listener.options.id === "list.send") {
       if (Array.from(LIST_ADMINS).includes(context.response.message.user.id)) {
         // User is allowed access to this command
@@ -185,7 +186,7 @@ module.exports = function(robot) {
     }
   });
 
-  const decorate = function(name) {
+  const decorate = name => {
     switch (LIST_DECORATOR) {
       case "<":
         return `<@${name}>`;
@@ -200,11 +201,11 @@ module.exports = function(robot) {
     }
   };
 
-  robot.hear(new RegExp(`@${IDENTIFIER}`), { id: "list.send" }, function(res) {
+  robot.hear(new RegExp(`@${IDENTIFIER}`), { id: "list.send" }, res => {
     let mem;
     const response = [];
     const tagged = [];
-    for (var g of Array.from(list.lists())) {
+    for (var g of Array.from(robot.list.lists())) {
       if (new RegExp(`(^|\\s)@${g}\\b`).test(res.message.text)) {
         tagged.push(g);
       }
@@ -213,7 +214,7 @@ module.exports = function(robot) {
       const process = Array.from(tagged);
       while (process.length > 0) {
         g = process.shift();
-        for (mem of Array.from(list.members(g))) {
+        for (mem of Array.from(robot.list.members(g))) {
           if (mem[0] === "&") {
             mem = mem.substring(1);
             // it's a list
@@ -230,7 +231,7 @@ module.exports = function(robot) {
     }
     // output results
     const decorated = {};
-    const decorateOnce = function(name) {
+    const decorateOnce = name => {
       if (name[0] === "&" || decorated[name]) {
         return name;
       } else {
@@ -245,7 +246,7 @@ module.exports = function(robot) {
     return (() => {
       const result = [];
       for (g of Array.from(tagged)) {
-        mem = list.members(g);
+        mem = robot.list.members(g);
         if (mem.length > 0) {
           if (["SlackBot", "Room"].includes(robot.adapter.constructor.name)) {
             result.push(
@@ -282,15 +283,13 @@ module.exports = function(robot) {
   });
 
   robot.respond(new RegExp(`[L|l]ist\\s+lists`), { id: "list.lists" }, res =>
-    res.send(`Lists: ${list.lists().join(", ")}`)
+    res.send(`Lists: ${robot.list.lists().join(", ")}`)
   );
 
-  robot.respond(new RegExp(`[L|l]ist\\s+dump`), { id: "list.dump" }, function(
-    res
-  ) {
+  robot.respond(new RegExp(`[L|l]ist\\s+dump`), { id: "list.dump" }, res => {
     const response = [];
-    for (let g of Array.from(list.lists())) {
-      response.push(`*@${g}*: ${list.members(g).join(", ")}`);
+    for (let g of Array.from(robot.list.lists())) {
+      response.push(`*@${g}*: ${robot.list.members(g).join(", ")}`);
     }
     if (response.length > 0) {
       res.send(response.join("\n"));
@@ -300,9 +299,9 @@ module.exports = function(robot) {
   robot.respond(
     new RegExp(`[L|l]ist\\s+create\\s+(${IDENTIFIER})`),
     { id: "list.create" },
-    function(res) {
+    res => {
       const name = res.match[1];
-      if (list.create(name)) {
+      if (robot.list.create(name)) {
         res.send(`Created list ${name}.`);
       } else {
         res.send(`List ${name} already exists!`);
@@ -313,9 +312,9 @@ module.exports = function(robot) {
   robot.respond(
     new RegExp(`[L|l]ist\\s+destroy\\s+(${IDENTIFIER})`),
     { id: "list.destroy" },
-    function(res) {
+    res => {
       const name = res.match[1];
-      const old = list.destroy(name);
+      const old = robot.list.destroy(name);
       if (old !== null) {
         res.send(`Destroyed list ${name} (${old.join(", ")}).`);
       } else {
@@ -327,10 +326,10 @@ module.exports = function(robot) {
   robot.respond(
     new RegExp(`[L|l]ist\\s+rename\\s+(${IDENTIFIER})\\s+(${IDENTIFIER})`),
     { id: "list.rename" },
-    function(res) {
+    res => {
       const from = res.match[1];
       const to = res.match[2];
-      if (list.rename(from, to)) {
+      if (robot.list.rename(from, to)) {
         res.send(`Renamed list ${from} to ${to}.`);
       } else {
         res.send(`Either list ${from} does not exist or ${to} already exists!`);
@@ -343,17 +342,17 @@ module.exports = function(robot) {
       `[L|l]ist\\s+add\\s+(${IDENTIFIER})\\s+(&?${IDENTIFIER}(?:\\s+&?${IDENTIFIER})*)`
     ),
     { id: "list.add" },
-    function(res) {
+    res => {
       const g = res.match[1];
       let names = res.match[2];
       names = names.split(/\s+/);
-      if (!list.exists(g)) {
+      if (!robot.list.exists(g)) {
         res.send(`List ${g} does not exist!`);
         return;
       }
       const response = [];
       for (let name of Array.from(names)) {
-        if (list.add(g, name)) {
+        if (robot.list.add(g, name)) {
           response.push(`${name} added to list ${g}.`);
         } else {
           response.push(`${name} is already in list ${g}!`);
@@ -368,17 +367,17 @@ module.exports = function(robot) {
       `[L|l]ist\\s+remove\\s+(${IDENTIFIER})\\s+(&?${IDENTIFIER}(?:\\s+&?${IDENTIFIER})*)`
     ),
     { id: "list.remove" },
-    function(res) {
+    res => {
       const g = res.match[1];
       let names = res.match[2];
       names = names.split(/\s+/);
-      if (!list.exists(g)) {
+      if (!robot.list.exists(g)) {
         res.send(`List ${g} does not exist!`);
         return;
       }
       const response = [];
       for (let name of Array.from(names)) {
-        if (list.remove(g, name)) {
+        if (robot.list.remove(g, name)) {
           response.push(`${name} removed from list ${g}.`);
         } else {
           response.push(`${name} is not in list ${g}!`);
@@ -391,24 +390,24 @@ module.exports = function(robot) {
   robot.respond(
     new RegExp(`[L|l]ist\\s+info\\s+(${IDENTIFIER})`),
     { id: "list.info" },
-    function(res) {
+    res => {
       const name = res.match[1];
-      if (!list.exists(name)) {
+      if (!robot.list.exists(name)) {
         res.send(`List ${name} does not exist!`);
         return;
       }
-      res.send(`*@${name}*: ${list.members(name).join(", ")}`);
+      res.send(`*@${name}*: ${robot.list.members(name).join(", ")}`);
     }
   );
 
   robot.respond(
     new RegExp(`[L|l]ist\\s+membership\\s+(&?${IDENTIFIER})`),
     { id: "list.membership" },
-    function(res) {
+    res => {
       const name = res.match[1];
-      const lists = list.membership(name);
+      const lists = robot.list.membership(name);
       if (lists.length > 0) {
-        res.send(`${name} is in ${list.membership(name).join(", ")}.`);
+        res.send(`${name} is in ${robot.list.membership(name).join(", ")}.`);
       } else {
         res.send(`${name} is not in any lists!`);
       }
