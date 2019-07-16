@@ -146,8 +146,16 @@ module.exports = robot => {
       }
     }
 
-    isadmin(name) {
+    isAdmin(name) {
       return Array.from(LIST_ADMINS).includes(name);
+    }
+
+    hasRole(user, role) {
+      return this.ismember(role, user);
+    }
+
+    usersWithRole(user, role) {
+      return this.ismember(role, user);
     }
   }
 
