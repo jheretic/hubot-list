@@ -6,6 +6,10 @@
 //   None
 //
 // Configuration:
+//   HUBOT_LIST_ADMINS - Specify a comma-separated list of user IDs to
+//     designate as admins that can manage and send messages to the lists.
+//     This is in addition to the built-in admin group. This setting defaults
+//     to ''.
 //   HUBOT_LIST_DECORATOR - a character indicating how to decorate usernames.
 //     Valid settings are '<', '(', '[', and '{'. This variable can also be left
 //     unset. This setting defaults to ''.
@@ -14,6 +18,9 @@
 //     left unset. This setting defaults to 'false'.
 //   HUBOT_LIST_RECURSE - set to 'false' to disable recursive list expansion.
 //     The setting defaults to 'true'.
+//   HUBOT_LIST_AUTH - set to 'true' to enable a hubot-auth compatible wrapper
+//     for using hubot-list as a drop-in replacement for other scripts that
+//     may use hubot-auth. This setting defaults to 'false'.
 //
 // Commands:
 //   hubot list lists - list all list names
