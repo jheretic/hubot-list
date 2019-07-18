@@ -9,9 +9,9 @@
 //   HUBOT_LIST_DECORATOR - a character indicating how to decorate usernames.
 //     Valid settings are '<', '(', '[', and '{'. This variable can also be left
 //     unset. This setting defaults to ''.
-//   HUBOT_LIST_PREPEND_USERNAME - set to 'false' to disable prepending the
+//   HUBOT_LIST_PREPEND_USERNAME - set to 'true' to disable prepending the
 //     original username to the prepended message. This variable can also be
-//     left unset. This setting defaults to 'true'.
+//     left unset. This setting defaults to 'false'.
 //   HUBOT_LIST_RECURSE - set to 'false' to disable recursive list expansion.
 //     The setting defaults to 'true'.
 //
@@ -35,6 +35,7 @@ const LIST_ADMINS = process.env.HUBOT_LIST_ADMINS.split(",") || "";
 const LIST_DECORATOR = process.env.HUBOT_LIST_DECORATOR || "";
 const LIST_PREPEND_USERNAME = process.env.HUBOT_LIST_PREPEND_USERNAME || false;
 const LIST_RECURSE = process.env.HUBOT_LIST_RECURSE || false;
+const LIST_AUTH = process.env.HUBOT_LIST_AUTH || false;
 
 function sorted(arr) {
   const copy = Array.from(arr);
@@ -44,9 +45,13 @@ function sorted(arr) {
 module.exports = robot => {
   class List {
     constructor() {
+      this.cache = {};
       robot.brain.on("loaded", this.load);
       if (robot.brain.data.users.length) {
         this.load();
+        if (!this.exists("admins")) {
+          this.create("admins");
+        }
       }
     }
 
@@ -147,23 +152,40 @@ module.exports = robot => {
     }
 
     isAdmin(name) {
-      return Array.from(LIST_ADMINS).includes(name);
-    }
-
-    hasRole(user, role) {
-      return this.ismember(role, user);
-    }
-
-    usersWithRole(user, role) {
-      return this.ismember(role, user);
+      return (
+        Array.from(LIST_ADMINS).includes(name) || this.ismember("admins", name)
+      );
     }
   }
 
-  robot.list = new List();
+  class Auth {
+    constructor() {}
+
+    isAdmin(name) {
+      return list.isAdmin(name);
+    }
+
+    hasRole(user, role) {
+      return list.ismember(role, user);
+    }
+
+    usersWithRole(role) {
+      return list.membership(role);
+    }
+
+    userRoles(user) {
+      return list.membership(name);
+    }
+  }
+
+  const list = new List();
+  if (LIST_AUTH) {
+    robot.auth = new Auth();
+  }
 
   robot.listenerMiddleware((context, next, done) => {
     if (context.listener.options.id === "list.send") {
-      if (Array.from(LIST_ADMINS).includes(context.response.message.user.id)) {
+      if (list.isAdmin(context.response.message.user.id)) {
         // User is allowed access to this command
         return next();
       } else {
@@ -176,15 +198,13 @@ module.exports = robot => {
         new RegExp(`^list\\.[a-zA-Z0-9]+$`, "i")
       )
     ) {
-      if (Array.from(LIST_ADMINS).includes(context.response.message.user.id)) {
+      if (list.isAdmin(context.response.message.user.id)) {
         // User is allowed access to this command
         return next();
       } else {
         // Restricted command, but user isn't in whitelist
         context.response.reply(
-          `I'm sorry, @${
-            context.response.message.user.name
-          }, but you don't have access to do that.`
+          `I'm sorry, @${context.response.message.user.name}, but you don't have access to do that.`
         );
         return done();
       }
@@ -213,7 +233,7 @@ module.exports = robot => {
     let mem;
     const response = [];
     const tagged = [];
-    for (var g of Array.from(robot.list.lists())) {
+    for (var g of Array.from(list.lists())) {
       if (new RegExp(`(^|\\s)@${g}\\b`).test(res.message.text)) {
         tagged.push(g);
       }
@@ -222,7 +242,7 @@ module.exports = robot => {
       const process = Array.from(tagged);
       while (process.length > 0) {
         g = process.shift();
-        for (mem of Array.from(robot.list.members(g))) {
+        for (mem of Array.from(list.members(g))) {
           if (mem[0] === "&") {
             mem = mem.substring(1);
             // it's a list
@@ -254,7 +274,7 @@ module.exports = robot => {
     return (() => {
       const result = [];
       for (g of Array.from(tagged)) {
-        mem = robot.list.members(g);
+        mem = list.members(g);
         if (mem.length > 0) {
           if (["SlackBot", "Room"].includes(robot.adapter.constructor.name)) {
             result.push(
@@ -291,13 +311,13 @@ module.exports = robot => {
   });
 
   robot.respond(new RegExp(`[L|l]ist\\s+lists`), { id: "list.lists" }, res =>
-    res.send(`Lists: ${robot.list.lists().join(", ")}`)
+    res.send(`Lists: ${list.lists().join(", ")}`)
   );
 
   robot.respond(new RegExp(`[L|l]ist\\s+dump`), { id: "list.dump" }, res => {
     const response = [];
-    for (let g of Array.from(robot.list.lists())) {
-      response.push(`*@${g}*: ${robot.list.members(g).join(", ")}`);
+    for (let g of Array.from(list.lists())) {
+      response.push(`*@${g}*: ${list.members(g).join(", ")}`);
     }
     if (response.length > 0) {
       res.send(response.join("\n"));
@@ -309,7 +329,7 @@ module.exports = robot => {
     { id: "list.create" },
     res => {
       const name = res.match[1];
-      if (robot.list.create(name)) {
+      if (list.create(name)) {
         res.send(`Created list ${name}.`);
       } else {
         res.send(`List ${name} already exists!`);
@@ -322,7 +342,7 @@ module.exports = robot => {
     { id: "list.destroy" },
     res => {
       const name = res.match[1];
-      const old = robot.list.destroy(name);
+      const old = list.destroy(name);
       if (old !== null) {
         res.send(`Destroyed list ${name} (${old.join(", ")}).`);
       } else {
@@ -337,7 +357,7 @@ module.exports = robot => {
     res => {
       const from = res.match[1];
       const to = res.match[2];
-      if (robot.list.rename(from, to)) {
+      if (list.rename(from, to)) {
         res.send(`Renamed list ${from} to ${to}.`);
       } else {
         res.send(`Either list ${from} does not exist or ${to} already exists!`);
@@ -354,13 +374,13 @@ module.exports = robot => {
       const g = res.match[1];
       let names = res.match[2];
       names = names.split(/\s+/);
-      if (!robot.list.exists(g)) {
+      if (!list.exists(g)) {
         res.send(`List ${g} does not exist!`);
         return;
       }
       const response = [];
       for (let name of Array.from(names)) {
-        if (robot.list.add(g, name)) {
+        if (list.add(g, name)) {
           response.push(`${name} added to list ${g}.`);
         } else {
           response.push(`${name} is already in list ${g}!`);
@@ -379,13 +399,13 @@ module.exports = robot => {
       const g = res.match[1];
       let names = res.match[2];
       names = names.split(/\s+/);
-      if (!robot.list.exists(g)) {
+      if (!list.exists(g)) {
         res.send(`List ${g} does not exist!`);
         return;
       }
       const response = [];
       for (let name of Array.from(names)) {
-        if (robot.list.remove(g, name)) {
+        if (list.remove(g, name)) {
           response.push(`${name} removed from list ${g}.`);
         } else {
           response.push(`${name} is not in list ${g}!`);
@@ -400,11 +420,11 @@ module.exports = robot => {
     { id: "list.info" },
     res => {
       const name = res.match[1];
-      if (!robot.list.exists(name)) {
+      if (!list.exists(name)) {
         res.send(`List ${name} does not exist!`);
         return;
       }
-      res.send(`*@${name}*: ${robot.list.members(name).join(", ")}`);
+      res.send(`*@${name}*: ${list.members(name).join(", ")}`);
     }
   );
 
@@ -413,9 +433,9 @@ module.exports = robot => {
     { id: "list.membership" },
     res => {
       const name = res.match[1];
-      const lists = robot.list.membership(name);
+      const lists = list.membership(name);
       if (lists.length > 0) {
-        res.send(`${name} is in ${robot.list.membership(name).join(", ")}.`);
+        res.send(`${name} is in ${list.membership(name).join(", ")}.`);
       } else {
         res.send(`${name} is not in any lists!`);
       }
