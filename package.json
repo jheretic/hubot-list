@@ -6,6 +6,9 @@
   "license": "AGPL-3.0-or-later",
   "keywords": "hubot, hubot-scripts",
   "main": "src/list.js",
+  "files": [
+    "/src"
+  ],
   "scripts": {
     "test": "mocha",
     "lint": "npx eslint ./src/*.js"
@@ -31,7 +34,7 @@
   },
   "dependencies": {},
   "peerDependencies": {
-    "hubot": "^3.1.1"
+    "hubot": "^3.3.2"
   },
   "devDependencies": {
     "chai": "^4.2.0",
