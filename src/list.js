@@ -11,6 +11,7 @@
 //   hubot list destroy <list> - destroy a list
 //   hubot list rename <old> <new> - rename a list
 //   hubot list add <list> <name> - add name to a list
+//   hubot list invite <list> <name> - invite to a list
 //   hubot list remove <list> <name> - remove name from a list
 //   hubot list info <list> - list members in list
 //   hubot list membership <name> - list lists that name is in
@@ -127,11 +128,18 @@ class List {
 
   add(list, name) {
     if (!this.exists(list)) {
+      this.robot.logger.error(
+        `Trying to add user ${name} to list ${list} but list doesn't exist.`
+      );
       return false;
     }
     if (Array.from(this.cache[list]).includes(name)) {
+      this.robot.logger.error(
+        `Trying to add user ${name} to list ${list} but user is already on that list.`
+      );
       return false;
     } else {
+      this.robot.logger.info(`Adding user ${name} to list ${list}.`);
       this.cache[list].push(name);
       return true;
     }
