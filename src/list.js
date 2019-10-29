@@ -196,12 +196,12 @@ class Auth {
     this.list = list;
   }
 
-  isAdmin(name) {
-    return this.list.isAdmin(name);
+  isAdmin(user) {
+    return this.list.isAdmin(user.id);
   }
 
   hasRole(user, role) {
-    return this.list.ismember(role, user);
+    return this.list.ismember(role, user.id);
   }
 
   usersWithRole(role) {
@@ -209,7 +209,7 @@ class Auth {
   }
 
   userRoles(user) {
-    return this.list.membership(name);
+    return this.list.membership(user.id);
   }
 }
 
@@ -448,7 +448,7 @@ module.exports = function(robot) {
           name,
           `You have been invited to the list ${g}, reply 'YES' (all uppercase) to accept or 'NO' to reject.`
         );
-        const user = robot.brain.userForId(name);
+        const user = robot.brain.userForName(name);
         if (!user.invited_to) {
           user.invited_to = [];
         }
